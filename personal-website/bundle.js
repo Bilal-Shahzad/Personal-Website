@@ -4,7 +4,7 @@
     
     const P = require('bluebird');
     
-    // Importing the bluebird  and assigning it to the  'P'
+    // Importing the bluebird  and assigning it to   'P'
     
     let lineList = [];
     
@@ -136,4 +136,65 @@
         }
         state.element.innerHTML += "<br>";
     }
-}]}
+    async function CheckIfSpecialCommand(line){
+        // checks if a line starts with ;
+        if(line[0]==';'){
+            // change the state
+            let lineParts = line.split(" ");
+            
+            if(CheckIfDelayCommand(lineParts[1])){
+                await HandleDelayCommand(parseInt(lineParts[2]));
+            }
+            else if(CheckIfTogglePause(lineParts[1])){
+                HandleTogglePauseCommand();
+            }
+            else{
+                // styling command
+                HandleStylingCommand(lineParts);
+            }
+    
+            return true;
+        }
+    
+        return false;
+    }
+    
+    function CheckIfTogglePause(command) {
+        return command === "TOGGLE_PAUSE";
+    }
+    
+    function CheckIfDelayCommand(command){
+        return command === "DELAY";
+    }
+    
+    function HandleTogglePauseCommand() {
+        ignorePause = !ignorePause;
+    }
+    
+    async function HandleDelayCommand(delayDuration) {
+        await P.delay(parseInt(delayDuration));
+    }
+    
+    function HandleStylingCommand(lineParts) {
+        state.element = document.getElementById(lineParts[1]);
+        state.isStyled = (lineParts[2] === "true" || lineParts[2] === "t");
+    
+        switch(parseInt(lineParts[3])){
+            case 0:
+                state.delay = ultra;
+                break;
+            case 1:
+                state.delay = fast;
+                break;
+            case 2:
+                state.delay = normal;
+                break;
+            default:
+                state.delay = normal;
+                break;
+        }
+    }
+    
+    function WriteSimpleChar(char){
+        state.element.innerHTML += char;
+    }
