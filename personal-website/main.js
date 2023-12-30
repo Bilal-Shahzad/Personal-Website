@@ -195,3 +195,28 @@ async function WriteStyledChar(char){
     }
 
 }
+// looks for patterns an replaces it with a comment 
+function addStylingToStorage(lineStorage){
+
+    lineStorage = lineStorage.replace(selectComment, (match) => {
+        return `<span class="comment">${match}</span>`;
+    });
+
+    lineStorage = lineStorage.replace(selectNumber, (match) => {
+        return `<span class="number">${match}</span>`;
+    });
+
+    lineStorage = lineStorage.replace(selectCssProperty, (match) => {
+        return `<span class="property">${match}</span>`;
+    });
+
+    lineStorage = lineStorage.replace(selectCssSelector, (match) => {
+        return `<span class="selector">${match}</span>`;
+    });
+
+    lineStorage = lineStorage.replace(selectMedia, (match) => {
+        return `<span class="media">${match}</span>`;
+    });
+
+    return lineStorage;
+}
