@@ -1648,3 +1648,379 @@ function formatNonError(obj) {
     }
     return ("(<" + snip(str) + ">, no stack trace)");
 }
+function snip(str) {
+    var maxChars = 41;
+    if (str.length < maxChars) {
+        return str;
+    }
+    return str.substr(0, maxChars - 3) + "...";
+}
+
+function longStackTracesIsSupported() {
+    return typeof captureStackTrace === "function";
+}
+
+var shouldIgnore = function() { return false; };
+var parseLineInfoRegex = /[\/<\(]([^:\/]+):(\d+):(?:\d+)\)?\s*$/;
+function parseLineInfo(line) {
+    var matches = line.match(parseLineInfoRegex);
+    if (matches) {
+        return {
+            fileName: matches[1],
+            line: parseInt(matches[2], 10)
+        };
+    }
+}
+
+function setBounds(firstLineError, lastLineError) {
+    if (!longStackTracesIsSupported()) return;
+    var firstStackLines = (firstLineError.stack || "").split("\n");
+    var lastStackLines = (lastLineError.stack || "").split("\n");
+    var firstIndex = -1;
+    var lastIndex = -1;
+    var firstFileName;
+    var lastFileName;
+    for (var i = 0; i < firstStackLines.length; ++i) {
+        var result = parseLineInfo(firstStackLines[i]);
+        if (result) {
+            firstFileName = result.fileName;
+            firstIndex = result.line;
+            break;
+        }
+    }
+    for (var i = 0; i < lastStackLines.length; ++i) {
+        var result = parseLineInfo(lastStackLines[i]);
+        if (result) {
+            lastFileName = result.fileName;
+            lastIndex = result.line;
+            break;
+        }
+    }
+    if (firstIndex < 0 || lastIndex < 0 || !firstFileName || !lastFileName ||
+        firstFileName !== lastFileName || firstIndex >= lastIndex) {
+        return;
+    }
+
+    shouldIgnore = function(line) {
+        if (bluebirdFramePattern.test(line)) return true;
+        var info = parseLineInfo(line);
+        if (info) {
+            if (info.fileName === firstFileName &&
+                (firstIndex <= info.line && info.line <= lastIndex)) {
+                return true;
+            }
+        }
+        return false;
+    };
+}
+
+function CapturedTrace(parent) {
+    this._parent = parent;
+    this._promisesCreated = 0;
+    var length = this._length = 1 + (parent === undefined ? 0 : parent._length);
+    captureStackTrace(this, CapturedTrace);
+    if (length > 32) this.uncycle();
+}
+util.inherits(CapturedTrace, Error);
+Context.CapturedTrace = CapturedTrace;
+
+CapturedTrace.prototype.uncycle = function() {
+    var length = this._length;
+    if (length < 2) return;
+    var nodes = [];
+    var stackToIndex = {};
+
+    for (var i = 0, node = this; node !== undefined; ++i) {
+        nodes.push(node);
+        node = node._parent;
+    }
+    length = this._length = i;
+    for (var i = length - 1; i >= 0; --i) {
+        var stack = nodes[i].stack;
+        if (stackToIndex[stack] === undefined) {
+            stackToIndex[stack] = i;
+        }
+    }
+    for (var i = 0; i < length; ++i) {
+        var currentStack = nodes[i].stack;
+        var index = stackToIndex[currentStack];
+        if (index !== undefined && index !== i) {
+            if (index > 0) {
+                nodes[index - 1]._parent = undefined;
+                nodes[index - 1]._length = 1;
+            }
+            nodes[i]._parent = undefined;
+            nodes[i]._length = 1;
+            var cycleEdgeNode = i > 0 ? nodes[i - 1] : this;
+
+            if (index < length - 1) {
+                cycleEdgeNode._parent = nodes[index + 1];
+                cycleEdgeNode._parent.uncycle();
+                cycleEdgeNode._length =
+                    cycleEdgeNode._parent._length + 1;
+            } else {
+                cycleEdgeNode._parent = undefined;
+                cycleEdgeNode._length = 1;
+            }
+            var currentChildLength = cycleEdgeNode._length + 1;
+            for (var j = i - 2; j >= 0; --j) {
+                nodes[j]._length = currentChildLength;
+                currentChildLength++;
+            }
+            return;
+        }
+    }
+};
+
+CapturedTrace.prototype.attachExtraTrace = function(error) {
+    if (error.__stackCleaned__) return;
+    this.uncycle();
+    var parsed = parseStackAndMessage(error);
+    var message = parsed.message;
+    var stacks = [parsed.stack];
+
+    var trace = this;
+    while (trace !== undefined) {
+        stacks.push(cleanStack(trace.stack.split("\n")));
+        trace = trace._parent;
+    }
+    removeCommonRoots(stacks);
+    removeDuplicateOrEmptyJumps(stacks);
+    util.notEnumerableProp(error, "stack", reconstructStack(message, stacks));
+    util.notEnumerableProp(error, "__stackCleaned__", true);
+};
+
+var captureStackTrace = (function stackDetection() {
+    var v8stackFramePattern = /^\s*at\s*/;
+    var v8stackFormatter = function(stack, error) {
+        if (typeof stack === "string") return stack;
+
+        if (error.name !== undefined &&
+            error.message !== undefined) {
+            return error.toString();
+        }
+        return formatNonError(error);
+    };
+
+    if (typeof Error.stackTraceLimit === "number" &&
+        typeof Error.captureStackTrace === "function") {
+        Error.stackTraceLimit += 6;
+        stackFramePattern = v8stackFramePattern;
+        formatStack = v8stackFormatter;
+        var captureStackTrace = Error.captureStackTrace;
+
+        shouldIgnore = function(line) {
+            return bluebirdFramePattern.test(line);
+        };
+        return function(receiver, ignoreUntil) {
+            Error.stackTraceLimit += 6;
+            captureStackTrace(receiver, ignoreUntil);
+            Error.stackTraceLimit -= 6;
+        };
+    }
+    var err = new Error();
+
+    if (typeof err.stack === "string" &&
+        err.stack.split("\n")[0].indexOf("stackDetection@") >= 0) {
+        stackFramePattern = /@/;
+        formatStack = v8stackFormatter;
+        indentStackFrames = true;
+        return function captureStackTrace(o) {
+            o.stack = new Error().stack;
+        };
+    }
+
+    var hasStackAfterThrow;
+    try { throw new Error(); }
+    catch(e) {
+        hasStackAfterThrow = ("stack" in e);
+    }
+    if (!("stack" in err) && hasStackAfterThrow &&
+        typeof Error.stackTraceLimit === "number") {
+        stackFramePattern = v8stackFramePattern;
+        formatStack = v8stackFormatter;
+        return function captureStackTrace(o) {
+            Error.stackTraceLimit += 6;
+            try { throw new Error(); }
+            catch(e) { o.stack = e.stack; }
+            Error.stackTraceLimit -= 6;
+        };
+    }
+
+    formatStack = function(stack, error) {
+        if (typeof stack === "string") return stack;
+
+        if ((typeof error === "object" ||
+            typeof error === "function") &&
+            error.name !== undefined &&
+            error.message !== undefined) {
+            return error.toString();
+        }
+        return formatNonError(error);
+    };
+
+    return null;
+
+})([]);
+
+if (typeof console !== "undefined" && typeof console.warn !== "undefined") {
+    printWarning = function (message) {
+        console.warn(message);
+    };
+    if (util.isNode && process.stderr.isTTY) {
+        printWarning = function(message, isSoft) {
+            var color = isSoft ? "\u001b[33m" : "\u001b[31m";
+            console.warn(color + message + "\u001b[0m\n");
+        };
+    } else if (!util.isNode && typeof (new Error().stack) === "string") {
+        printWarning = function(message, isSoft) {
+            console.warn("%c" + message,
+                        isSoft ? "color: darkorange" : "color: red");
+        };
+    }
+}
+
+var config = {
+    warnings: warnings,
+    longStackTraces: false,
+    cancellation: false,
+    monitoring: false,
+    asyncHooks: false
+};
+
+if (longStackTraces) Promise.longStackTraces();
+
+return {
+    asyncHooks: function() {
+        return config.asyncHooks;
+    },
+    longStackTraces: function() {
+        return config.longStackTraces;
+    },
+    warnings: function() {
+        return config.warnings;
+    },
+    cancellation: function() {
+        return config.cancellation;
+    },
+    monitoring: function() {
+        return config.monitoring;
+    },
+    propagateFromFunction: function() {
+        return propagateFromFunction;
+    },
+    boundValueFunction: function() {
+        return boundValueFunction;
+    },
+    checkForgottenReturns: checkForgottenReturns,
+    setBounds: setBounds,
+    warn: warn,
+    deprecated: deprecated,
+    CapturedTrace: CapturedTrace,
+    fireDomEvent: fireDomEvent,
+    fireGlobalEvent: fireGlobalEvent
+};
+};
+
+},{"./errors":12,"./es5":13,"./util":36}],10:[function(_dereq_,module,exports){
+"use strict";
+module.exports = function(Promise) {
+function returner() {
+    return this.value;
+}
+function thrower() {
+    throw this.reason;
+}
+
+Promise.prototype["return"] =
+Promise.prototype.thenReturn = function (value) {
+    if (value instanceof Promise) value.suppressUnhandledRejections();
+    return this._then(
+        returner, undefined, undefined, {value: value}, undefined);
+};
+
+Promise.prototype["throw"] =
+Promise.prototype.thenThrow = function (reason) {
+    return this._then(
+        thrower, undefined, undefined, {reason: reason}, undefined);
+};
+
+Promise.prototype.catchThrow = function (reason) {
+    if (arguments.length <= 1) {
+        return this._then(
+            undefined, thrower, undefined, {reason: reason}, undefined);
+    } else {
+        var _reason = arguments[1];
+        var handler = function() {throw _reason;};
+        return this.caught(reason, handler);
+    }
+};
+
+Promise.prototype.catchReturn = function (value) {
+    if (arguments.length <= 1) {
+        if (value instanceof Promise) value.suppressUnhandledRejections();
+        return this._then(
+            undefined, returner, undefined, {value: value}, undefined);
+    } else {
+        var _value = arguments[1];
+        if (_value instanceof Promise) _value.suppressUnhandledRejections();
+        var handler = function() {return _value;};
+        return this.caught(value, handler);
+    }
+};
+};
+
+},{}],11:[function(_dereq_,module,exports){
+"use strict";
+module.exports = function(Promise, INTERNAL) {
+var PromiseReduce = Promise.reduce;
+var PromiseAll = Promise.all;
+
+function promiseAllThis() {
+    return PromiseAll(this);
+}
+
+function PromiseMapSeries(promises, fn) {
+    return PromiseReduce(promises, fn, INTERNAL, INTERNAL);
+}
+
+Promise.prototype.each = function (fn) {
+    return PromiseReduce(this, fn, INTERNAL, 0)
+              ._then(promiseAllThis, undefined, undefined, this, undefined);
+};
+
+Promise.prototype.mapSeries = function (fn) {
+    return PromiseReduce(this, fn, INTERNAL, INTERNAL);
+};
+
+Promise.each = function (promises, fn) {
+    return PromiseReduce(promises, fn, INTERNAL, 0)
+              ._then(promiseAllThis, undefined, undefined, promises, undefined);
+};
+Promise.mapSeries = PromiseMapSeries;
+};
+
+
+},{}],12:[function(_dereq_,module,exports){
+"use strict";
+var es5 = _dereq_("./es5");
+var Objectfreeze = es5.freeze;
+var util = _dereq_("./util");
+var inherits = util.inherits;
+var notEnumerableProp = util.notEnumerableProp;
+
+function subError(nameProperty, defaultMessage) {
+    function SubError(message) {
+        if (!(this instanceof SubError)) return new SubError(message);
+        notEnumerableProp(this, "message",
+            typeof message === "string" ? message : defaultMessage);
+        notEnumerableProp(this, "name", nameProperty);
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            Error.call(this);
+        }
+    }
+    inherits(SubError, Error);
+    return SubError;
+}
