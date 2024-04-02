@@ -72,7 +72,7 @@ function InitializeState(){
     }
 }
 
-// starting the animation 
+// Terrible way to do this, but it works
 async function StartAnimation(){
     while(lineList.length > 0){
         await WriteLine(lineList.shift());
@@ -187,15 +187,15 @@ async function WriteStyledChar(char){
     // update what the user sees
     state.element.innerHTML = styledLineStorage;
 
-    // when char is not alphanumeric update the style tag
-    // Avoids flickers
+    // when char is not alphanumeric, update the style tag
+    // (Avoids flickers)
     if(!char.match(/[a-zA-Z0-9]/)){
         trueStyleElement.innerHTML = outputBuffer;
         state.element.innerHTML = styledLineStorage;
     }
 
 }
-// looks for patterns an replaces it with a comment 
+
 function addStylingToStorage(lineStorage){
 
     lineStorage = lineStorage.replace(selectComment, (match) => {
@@ -205,6 +205,10 @@ function addStylingToStorage(lineStorage){
     lineStorage = lineStorage.replace(selectNumber, (match) => {
         return `<span class="number">${match}</span>`;
     });
+
+    // lineStorage = lineStorage.replace(selectCssValue, (match) => {
+    //     return `<span class="value">${match}</span>`;
+    // });
 
     lineStorage = lineStorage.replace(selectCssProperty, (match) => {
         return `<span class="property">${match}</span>`;
@@ -220,3 +224,9 @@ function addStylingToStorage(lineStorage){
 
     return lineStorage;
 }
+
+/*
+    selector {
+        property: value;
+    }
+*/
