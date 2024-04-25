@@ -2,9 +2,10 @@
  * Hello! I'm Bilal Shahzad.
  * A Full Stack Developer that is from Wichita Kansas!
  * 
+ * 
  * I'm a full stack developer. 
  * Currently, I'm trying out all sorts of stuff to see what I like.
- * This is one of my favourite projects, a website that I made.
+ * This is one of my favorite projects, a website that I made.
  *
  * If you're a boring person, you can press the skip button at the bottom-left.
  *
@@ -79,8 +80,9 @@
  ; DELAY 420
  
  /*
-  * Oh.
+  * Oh EWWWW.
   *
+  * My links are covering up this beautiful text and box.
   * Let me fix this and make it not bother us.
   */
  ; styles true 0
@@ -153,7 +155,8 @@
  /*
   * Not bad, if I do say so myself.
   * But it feels a bit bland and empty. Doesn't it?
-  * Let me add some color. How about something like this?
+  * Let me add some color. How about something IDE like?
+  * ... Maybe a lot more colorful than an IDE ...
   */
  ; styles true 0
  ; DELAY 420
@@ -186,7 +189,7 @@
   *
   * You probably want to know a little more about me.
   * About some of my work, projects and etc.
-  * Let me prep a TL/DR of my resume for you.
+  * Let me prep a TL;DR of my resume for you.
   * 
   * Oh and just in case you didn't notice...
   * The link to a version of my resume is at the bottom left.
@@ -217,69 +220,69 @@
  ; resume false 0
  ; TOGGLE_PAUSE
  ===================
- Bilal Shahzad
- ===================
- Went to Wichita State from 2020 - 2022 for computer science. 
+  Bilal Shahzad
+  ===================
+  Went to Wichita State from 2020 - 2022 for computer science. 
+  
+  ===================
+  Personal Projects:
+  ===================
+  This Website (JavaScript, HTML, CSS, React)
+  October 2023 - Present
+  
+  Giants Relay: A blog about the New York Giants (Javascript, React, HTML, CSS)
+  September 2023 - January 2024
+  
+  Autofolio A self generating resume builder(JavaScript, HTML, CSS, React, SQL)
+  August 2023 - August 2023
+  ===================
+  Skills:
+  ===================
+  Programming Languages: JavaScript, HTML, CSS, React, SQL, GIT, BASH, AWS, 
+  Software: Visual Studio Code, Git, Unity, 
+  Human Languages: English, Urdu, Hindi(Rough)
+  General: Creative, Fast learner, Communicative, Curious
+  
+  ===================
+  Interests:
+  ===================
+  Programming:
  
- ===================
- Personal Projects:
- ===================
- This Website (JavaScript, HTML, CSS, React)
- October 2023 - Present
+  Participated in Hackathons such as “Hack The North 2023”, “Fall Hacks 2023” & "EducateHacks 2024" .
+  ===================
+  Fun Fact:
  
- Giants Relay: A blog about the New York Giants (Javascript, React, HTML, CSS)
- September 2023 - January 2024
- 
- Autofolio A self generating resume builder(JavaScript, HTML, CSS, React, SQL)
- August 2023 - August 2023
- ===================
- Skills:
- ===================
- Programming Languages: JavaScript, HTML, CSS, React, SQL, GIT, BASH, AWS, 
- Software: Visual Studio Code, Git, Unity, 
- Human Languages: English, Urdu, Hindi(Rough)
- General: Creative, Fast learner, Communicative, Curious
- 
- ===================
- Interests:
- ===================
- Programming:
-
- Participated in Hackathons such as “Hack The North 2023”, “Fall Hacks 2023” & "EducateHacks 2024" .
- ===================
- Fun Fact:
-
- Chess
- 2000 Rapid, 1700 Blitz, 1250 Bullet, 2250 Puzzle on chess.com.
- 
+  Chess
+  2000 Rapid, 1700 Blitz, 1250 Bullet, 2250 Puzzle on chess.com.
+  
  ; styles true 2
  ; DELAY 420
  ; TOGGLE_PAUSE
  
  /*
-  * I hope you enjoyed my website.
-  *
-  * Just one more thing! If you want, you can EDIT this website.
-  * You can change the colors, the text, the code, the layout.
-  * You can even break the website if you want!
-  * Simply start typing in this window.
-  *
-  * If you have any questions, comments or concerns
-  *
-  * Feel free to contact me at:
- ; TOGGLE_PAUSE
-  * Email: b.shahzad01@gmail.com
-  * Discord: BILSHAZ#8390
- ; TOGGLE_PAUSE
-  * 
-  * I'm always looking for new opportunities to learn and grow.
-  * 
-  * Thank you for your time and I hope you are impressed!
-  * 
-  * - Bilal
-  *
-  * [END ANIMATION]
-  */
+   * I hope you enjoyed my website.
+   *
+   * Just one more thing! If you want, you can EDIT this website.
+   * You can change the colors, the text, the code, the layout.
+   * You can even break the website if you want!
+   * Simply start typing in this window.
+   *
+   * If you have any questions, comments or concerns
+   *
+   * Feel free to contact me at:
+  ; TOGGLE_PAUSE
+   * Email: b.shahzad01@gmail.com
+   * Discord: BILSHAZ#8390
+  ; TOGGLE_PAUSE
+   * 
+   * I'm always looking for new opportunities to learn and grow.
+   * 
+   * Thank you for your time and I hope you are impressed!
+   * 
+   * - Bilal
+   *
+   * [END ANIMATION]
+   */
  
  #skip  {
      display: none;
